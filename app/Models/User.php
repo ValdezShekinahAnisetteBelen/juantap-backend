@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'profile_image',
+        'is_admin',
     ];
 
     /**
@@ -44,5 +46,24 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+    public function profile()
+    {
+        return $this->hasOne(Profile::class);
+    }
+
+    public function paymentProofs()
+    {
+        return $this->hasMany(PaymentProof::class);
+    }
+
+    public function templateUnlocks()
+    {
+        return $this->hasMany(TemplateUnlock::class);
+    }
+
+    public function adminLogs()
+    {
+        return $this->hasMany(AdminLog::class, 'admin_id');
     }
 }
