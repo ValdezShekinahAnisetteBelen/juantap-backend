@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\WelcomeEmail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -16,7 +18,8 @@ class AuthController extends Controller
         $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|unique:users',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|string|min:6',
+            'confirmPassword' => 'required|string|min:6|same:password',
         ]);
 
         $user = User::create([
@@ -25,8 +28,11 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // ✅ Send email
+        $user->sendEmailVerificationNotification(); // 🔥 this triggers the default email
+
         return response()->json([
-            'message' => 'Registered successfully',
+            'message' => 'Registered successfully. A welcome email has been sent!',
             'user' => $user
         ], 201);
     }
