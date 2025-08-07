@@ -16,8 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('username')->unique();
             $table->text('bio')->nullable();
-            $table->string('contact_email')->nullable();
-            $table->string('phone_number')->nullable();
+            $table->string('phone')->nullable();
             $table->string('website')->nullable();
             $table->foreignId('template_id')->nullable()->constrained()->onDelete('set null');
             $table->enum('background_type', ['image', 'color'])->default('color');

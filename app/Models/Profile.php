@@ -10,9 +10,9 @@ class Profile extends Model
         'user_id',
         'username',
         'bio',
-        'contact_email',
-        'phone_number',
+        'phone',
         'website',
+        'location',
         'template_id',
         'background_type',
         'background_value',
@@ -23,6 +23,7 @@ class Profile extends Model
         'nfc_redirect_url',
         'is_published',
     ];
+
 
     public function user()
     {

@@ -16,14 +16,17 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
+            'firstname' => 'required|string|max:255',
+            'lastname' => 'required|string|max:255',
             'email'    => 'required|string|email|unique:users',
             'password' => 'required|string|min:6',
             'confirmPassword' => 'required|string|min:6|same:password',
         ]);
 
         $user = User::create([
-            'name'     => $request->name,
+            'firstname' => $request->firstname,
+            'lastname' => $request->lastname,
+            'name' => $request->firstname . ' ' . $request->lastname,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
         ]);
@@ -62,10 +65,12 @@ class AuthController extends Controller
     }
 
     // Get current authenticated user
-    public function user(Request $request)
-    {
-        return response()->json($request->user());
-    }
+        public function user(Request $request)
+        {
+            $user = $request->user()->load('profile.socialLinks'); // load profile + nested social links
+
+            return response()->json($user);
+        }
 
     // Logout
     public function logout(Request $request)

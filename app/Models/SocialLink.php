@@ -9,6 +9,7 @@ class SocialLink extends Model
     protected $fillable = [
         'profile_id',
         'platform',
+        'display_name',
         'url',
     ];
 
