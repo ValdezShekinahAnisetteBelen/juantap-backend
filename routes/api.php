@@ -77,6 +77,7 @@ Route::get('/login', function () {
 | Protected Routes (auth:sanctum)
 |--------------------------------------------------------------------------
 */
+
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user', [AuthController::class, 'user']);
