@@ -8,7 +8,8 @@ use App\Http\Controllers\Api\{
     SocialLinkController,
     TemplateController,
     PaymentProofController,
-    TemplateUnlockController
+    TemplateUnlockController,
+    UserTemplateController
 };
 use App\Models\User;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -108,3 +109,20 @@ Route::middleware('auth:sanctum')->group(function () {
     // TEMPLATE UNLOCKS
     Route::get('/template-unlocks', [TemplateUnlockController::class, 'index']);
 });
+Route::middleware('auth:sanctum')->get('/user-profile', [ProfileController::class, 'me']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Saved templates
+    Route::get('/templates/saved', [UserTemplateController::class, 'savedTemplates']);
+    Route::post('/templates/saved/{template}', [UserTemplateController::class, 'saveTemplate']);
+    Route::delete('/templates/saved/{template}', [UserTemplateController::class, 'unsaveTemplate']);
+
+    // Used templates
+    Route::get('/templates/used', [UserTemplateController::class, 'usedTemplates']);
+    Route::post('/templates/used/{template}', [UserTemplateController::class, 'useTemplate']);
+    Route::delete('/templates/used/{slug}', [UserTemplateController::class, 'unuseTemplate']);
+});
+Route::post('/payment/submit', [UserTemplateController::class, 'submit'])->middleware('auth:sanctum');;
+// routes/api.php
+Route::get('/profile/{username}/used-templates', [UserTemplateController::class, 'getUsedTemplate']);
+Route::get('/profile/{username}', [ProfileController::class, 'show']);

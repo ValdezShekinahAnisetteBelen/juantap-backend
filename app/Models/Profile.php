@@ -39,4 +39,8 @@ class Profile extends Model
     {
         return $this->belongsTo(Template::class);
     }
+    public function profile()
+    {
+        return $this->hasOne(\App\Models\Profile::class, 'user_id');
+    }
 }

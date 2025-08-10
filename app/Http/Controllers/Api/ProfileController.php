@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SocialLink;
+use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
@@ -52,37 +53,123 @@ class ProfileController extends Controller
             'display_name' => $validated['display_name'] ?? $user->display_name,
         ])->save();
 
-            $profile = $user->profile()->updateOrCreate([], [
-                'bio' => $validated['bio'] ?? null,
-                'phone' => $validated['phone'] ?? null,
-                'website' => $validated['website'] ?? null,
-                'location' => $validated['location'] ?? null,
-            ]);
+        $profile = $user->profile()->updateOrCreate([], [
+            'bio' => $validated['bio'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'website' => $validated['website'] ?? null,
+            'location' => $validated['location'] ?? null,
+        ]);
 
 
         if (isset($validated['social_links'])) {
-        $existingIds = [];
+            $existingIds = [];
 
-        foreach ($validated['social_links'] as $linkData) {
-            if (isset($linkData['id'])) {
-                $link = SocialLink::where('id', $linkData['id'])
-                    ->where('profile_id', $profile->id)
-                    ->first();
+            foreach ($validated['social_links'] as $linkData) {
+                if (isset($linkData['id'])) {
+                    $link = SocialLink::where('id', $linkData['id'])
+                        ->where('profile_id', $profile->id)
+                        ->first();
 
-                if ($link) {
-                    $link->update($linkData);
+                    if ($link) {
+                        $link->update($linkData);
+                        $existingIds[] = $link->id;
+                    }
+                } else {
+                    $link = $profile->socialLinks()->create($linkData);
                     $existingIds[] = $link->id;
                 }
-            } else {
-                $link = $profile->socialLinks()->create($linkData);
-                $existingIds[] = $link->id;
             }
+
+            // Optionally delete removed links
+            $profile->socialLinks()->whereNotIn('id', $existingIds)->delete();
         }
 
-        // Optionally delete removed links
-        $profile->socialLinks()->whereNotIn('id', $existingIds)->delete();
-    }
-
         return response()->json(['message' => 'Profile updated successfully.']);
+    }
+    public function me(Request $request)
+    {
+        $user = $request->user()->load([
+            'profile.socialLinks' // eager load profile + social links
+        ]);
+
+        return response()->json([
+            'id'           => $user->id,
+            'name'         => $user->name,
+            'firstname'    => $user->firstname,
+            'lastname'     => $user->lastname,
+            'display_name' => $user->display_name,
+            'username'     => $user->username,
+            'email'        => $user->email,
+            'profile_image' => $user->profile_image,
+            'is_admin'     => $user->is_admin,
+            'profile'      => [
+                'bio'               => $user->profile->bio ?? '',
+                'phone'             => $user->profile->phone ?? '',
+                'website'           => $user->profile->website ?? '',
+                'location'          => $user->profile->location ?? '',
+                'template_id'       => $user->profile->template_id,
+                'background_type'   => $user->profile->background_type,
+                'background_value'  => $user->profile->background_value,
+                'font_style'        => $user->profile->font_style,
+                'font_size'         => $user->profile->font_size,
+                'button_style'      => $user->profile->button_style,
+                'accent_color'      => $user->profile->accent_color,
+                'nfc_redirect_url'  => $user->profile->nfc_redirect_url,
+                'is_published'      => $user->profile->is_published,
+                'socialLinks'       => $user->profile->socialLinks->map(function ($link) {
+                    return [
+                        'id'        => $link->platform,
+                        'username'  => $link->display_name,
+                        'url'       => $link->url,
+                        'isVisible' => true, // you can later add a visibility column
+                    ];
+                }),
+            ]
+        ], 200);
+    }
+    public function show($username)
+    {
+        $user = User::where('username', $username)
+            ->with(['profile.socialLinks']) // eager load profile + social links
+            ->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Profile not found'], 404);
+        }
+
+        return response()->json([
+            'id'            => $user->id,
+            'name'          => $user->name,
+            'firstname'     => $user->firstname,
+            'lastname'      => $user->lastname,
+            'display_name'  => $user->display_name,
+            'username'      => $user->username,
+            'email'         => $user->email,
+            'profile_image' => $user->profile_image,
+            'is_admin'      => $user->is_admin,
+            'profile'       => [
+                'bio'               => $user->profile->bio ?? '',
+                'phone'             => $user->profile->phone ?? '',
+                'website'           => $user->profile->website ?? '',
+                'location'          => $user->profile->location ?? '',
+                'template_id'       => $user->profile->template_id,
+                'background_type'   => $user->profile->background_type,
+                'background_value'  => $user->profile->background_value,
+                'font_style'        => $user->profile->font_style,
+                'font_size'         => $user->profile->font_size,
+                'button_style'      => $user->profile->button_style,
+                'accent_color'      => $user->profile->accent_color,
+                'nfc_redirect_url'  => $user->profile->nfc_redirect_url,
+                'is_published'      => $user->profile->is_published,
+                'socialLinks'       => $user->profile->socialLinks->map(function ($link) {
+                    return [
+                        'id'        => $link->platform,
+                        'username'  => $link->display_name,
+                        'url'       => $link->url,
+                        'isVisible' => true,
+                    ];
+                }),
+            ]
+        ], 200);
     }
 }

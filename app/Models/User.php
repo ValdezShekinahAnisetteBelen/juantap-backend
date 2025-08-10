@@ -73,4 +73,13 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(AdminLog::class, 'admin_id');
     }
+    public function savedTemplates()
+    {
+        return $this->hasMany(UserSavedTemplate::class);
+    }
+
+    public function usedTemplates()
+    {
+        return $this->hasMany(UserUsedTemplate::class);
+    }
 }
