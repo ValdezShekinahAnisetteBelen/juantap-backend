@@ -120,19 +120,17 @@ class UserTemplateController extends Controller
     {
         $template = Template::where('slug', $slug)->firstOrFail();
 
-        // Avoid duplicates: check if already marked as used by the user
-        $exists = $request->user()->usedTemplates()
-            ->where('template_id', $template->id)
-            ->exists();
+        // Remove any existing template usage for this user
+        $request->user()->usedTemplates()->delete();
 
-        if (!$exists) {
-            $request->user()->usedTemplates()->create([
-                'template_id' => $template->id
-            ]);
-        }
+        // Assign the new one
+        $request->user()->usedTemplates()->create([
+            'template_id' => $template->id
+        ]);
 
         return response()->json(['message' => 'Template set as used.']);
     }
+
 
     public function submit(Request $request)
     {
