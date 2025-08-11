@@ -92,7 +92,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // SOCIAL LINKS
     Route::post('/profile/social-links', [SocialLinkController::class, 'store']);
     Route::put('/profile/social-links/{id}', [SocialLinkController::class, 'update']);
-    Route::delete('/profile/social-links/{id}', [SocialLinkController::class, 'destroy']);
 
     // TEMPLATES
     Route::get('/templates', [TemplateController::class, 'index']);

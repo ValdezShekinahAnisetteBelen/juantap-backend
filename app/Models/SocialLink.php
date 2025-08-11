@@ -11,6 +11,7 @@ class SocialLink extends Model
         'platform',
         'display_name',
         'url',
+        'is_visible'
     ];
 
     public function profile()

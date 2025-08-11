@@ -52,7 +52,7 @@ class AuthController extends Controller
         $user = Auth::user();
 
         if (!$user->hasVerifiedEmail()) {
-            return response()->json(['message' => 'Email not verified.'], 403);
+            return response()->json(['message' => 'Account not verified'], 403);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -63,6 +63,7 @@ class AuthController extends Controller
             'user' => $user,
         ]);
     }
+
 
     // Get current authenticated user
         public function user(Request $request)
