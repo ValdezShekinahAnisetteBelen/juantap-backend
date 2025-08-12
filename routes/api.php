@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\{
     AuthController,
@@ -9,9 +10,14 @@ use App\Http\Controllers\Api\{
     TemplateController,
     PaymentProofController,
     TemplateUnlockController,
-    UserTemplateController
+    UserTemplateController,
+    StatsController
 };
+
+use App\Models\TemplateUnlock;
 use App\Models\User;
+use Carbon\Carbon;
+use App\Models\Template;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Support\Facades\URL;
 
@@ -107,7 +113,39 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // TEMPLATE UNLOCKS
     Route::get('/template-unlocks', [TemplateUnlockController::class, 'index']);
+    
+     Route::get('/stats/users-count', function () {
+    return response()->json(['count' => \App\Models\User::count()]);
+    });
+
+    Route::get('/stats/top-templates', [StatsController::class, 'topTemplates']);
+
 });
+
+
+  Route::get('/stats/revenue', [StatsController::class, 'revenue']);
+  Route::get('/stats/pending-payments', [StatsController::class, 'pendingPayments']);
+
+ Route::get('/stats/user-growth', [StatsController::class, 'userGrowth']);
+Route::get('/stats/template-distribution', [StatsController::class, 'templateDistribution']);
+
+Route::middleware('auth:sanctum')->get('/stats/templates-count', function () {
+    $thisMonth = Template::whereMonth('created_at', Carbon::now()->month)
+                         ->whereYear('created_at', Carbon::now()->year)
+                         ->count();
+
+    $lastMonth = Template::whereMonth('created_at', Carbon::now()->subMonth()->month)
+                         ->whereYear('created_at', Carbon::now()->subMonth()->year)         
+                         ->count();
+
+    $change = $thisMonth - $lastMonth;
+
+    return response()->json([
+        'count' => Template::count(),
+        'change' => $change
+    ]);
+});
+
 Route::middleware('auth:sanctum')->get('/user-profile', [ProfileController::class, 'me']);
 
 Route::middleware('auth:sanctum')->group(function () {

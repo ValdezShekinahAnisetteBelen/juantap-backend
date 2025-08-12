@@ -34,10 +34,16 @@ class AuthController extends Controller
         // ✅ Send email
         $user->sendEmailVerificationNotification(); // 🔥 this triggers the default email
 
-        return response()->json([
-            'message' => 'Registered successfully. A welcome email has been sent!',
-            'user' => $user
-        ], 201);
+       return response()->json([
+        'message' => 'Registered successfully. A welcome email has been sent!',
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'is_admin' => (bool)$user->is_admin,
+        ],
+    ], 201);
+
     }
 
     // Login
@@ -58,9 +64,14 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => $user,
+        'access_token' => $token,
+        'token_type' => 'Bearer',
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'is_admin' => (bool)$user->is_admin,
+    ],
         ]);
     }
 
