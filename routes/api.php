@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\{
+    AdminPaymentController,
     AuthController,
     ProfileController,
     SocialLinkController,
@@ -113,30 +114,29 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // TEMPLATE UNLOCKS
     Route::get('/template-unlocks', [TemplateUnlockController::class, 'index']);
-    
-     Route::get('/stats/users-count', function () {
-    return response()->json(['count' => \App\Models\User::count()]);
+
+    Route::get('/stats/users-count', function () {
+        return response()->json(['count' => \App\Models\User::count()]);
     });
 
     Route::get('/stats/top-templates', [StatsController::class, 'topTemplates']);
-
 });
 
 
-  Route::get('/stats/revenue', [StatsController::class, 'revenue']);
-  Route::get('/stats/pending-payments', [StatsController::class, 'pendingPayments']);
+Route::get('/stats/revenue', [StatsController::class, 'revenue']);
+Route::get('/stats/pending-payments', [StatsController::class, 'pendingPayments']);
 
- Route::get('/stats/user-growth', [StatsController::class, 'userGrowth']);
+Route::get('/stats/user-growth', [StatsController::class, 'userGrowth']);
 Route::get('/stats/template-distribution', [StatsController::class, 'templateDistribution']);
 
 Route::middleware('auth:sanctum')->get('/stats/templates-count', function () {
     $thisMonth = Template::whereMonth('created_at', Carbon::now()->month)
-                         ->whereYear('created_at', Carbon::now()->year)
-                         ->count();
+        ->whereYear('created_at', Carbon::now()->year)
+        ->count();
 
     $lastMonth = Template::whereMonth('created_at', Carbon::now()->subMonth()->month)
-                         ->whereYear('created_at', Carbon::now()->subMonth()->year)         
-                         ->count();
+        ->whereYear('created_at', Carbon::now()->subMonth()->year)
+        ->count();
 
     $change = $thisMonth - $lastMonth;
 
@@ -163,3 +163,8 @@ Route::post('/payment/submit', [UserTemplateController::class, 'submit'])->middl
 // routes/api.php
 Route::get('/profile/{username}/used-templates', [UserTemplateController::class, 'getUsedTemplate']);
 Route::get('/profile/{username}', [ProfileController::class, 'show']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/admin/payments', [AdminPaymentController::class, 'index']);
+    Route::post('/admin/payments/{id}/approve', [AdminPaymentController::class, 'approve']);
+    Route::post('/admin/payments/{id}/disapprove', [AdminPaymentController::class, 'disapprove']);
+});
