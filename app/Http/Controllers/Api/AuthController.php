@@ -24,27 +24,36 @@ class AuthController extends Controller
         ]);
 
         $user = User::create([
-            'firstname' => $request->firstname,
-            'lastname' => $request->lastname,
-            'name' => $request->firstname . ' ' . $request->lastname,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
+        'firstname' => $request->firstname,
+        'lastname'  => $request->lastname,
+        'name'      => $request->firstname . ' ' . $request->lastname,
+        'email'     => $request->email,
+        'password'  => Hash::make($request->password),
+        'profile_image' => 'defaults/avatar.png', // store default path
+    ]);
+
+        // ✅ Create empty profile for new user
+        $user->profile()->create([
+            'bio' => '',
+            'phone' => '',
+            'website' => '',
+            'location' => '',
         ]);
 
-        // ✅ Send email
-        $user->sendEmailVerificationNotification(); // 🔥 this triggers the default email
+        // ✅ Send email verification
+        $user->sendEmailVerificationNotification();
 
-       return response()->json([
-        'message' => 'Registered successfully. A welcome email has been sent!',
-        'user' => [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'is_admin' => (bool)$user->is_admin,
-        ],
-    ], 201);
-
+        return response()->json([
+            'message' => 'Registered successfully. A welcome email has been sent!',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_admin' => (bool)$user->is_admin,
+            ],
+        ], 201);
     }
+
 
     // Login
     public function login(Request $request)
@@ -75,14 +84,23 @@ class AuthController extends Controller
         ]);
     }
 
+    public function user(Request $request)
+    {
+        $user = $request->user()->load('profile.socialLinks');
 
-    // Get current authenticated user
-        public function user(Request $request)
-        {
-            $user = $request->user()->load('profile.socialLinks'); // load profile + nested social links
-
-            return response()->json($user);
+        // ✅ Ensure profile exists
+        if (!$user->profile) {
+            $user->profile()->create([
+                'bio' => '',
+                'phone' => '',
+                'website' => '',
+                'location' => '',
+            ]);
+            $user->load('profile.socialLinks'); // reload with newly created profile
         }
+
+        return response()->json($user);
+    }
 
     // Logout
     public function logout(Request $request)

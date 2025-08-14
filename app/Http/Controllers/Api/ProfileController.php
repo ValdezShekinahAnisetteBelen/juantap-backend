@@ -116,14 +116,16 @@ class ProfileController extends Controller
                 'accent_color'      => $user->profile->accent_color,
                 'nfc_redirect_url'  => $user->profile->nfc_redirect_url,
                 'is_published'      => $user->profile->is_published,
-                'socialLinks'       => $user->profile->socialLinks->map(function ($link) {
+                'socialLinks' => $user->profile->socialLinks->map(function ($link) {
                     return [
-                        'id'        => $link->platform,
+                        'id'        => $link->id,           
+                        'platform'  => $link->platform,      
                         'username'  => $link->display_name,
                         'url'       => $link->url,
-                        'isVisible' => true, // you can later add a visibility column
+                        'isVisible' => (bool) $link->is_visible, 
                     ];
                 }),
+
             ]
         ], 200);
     }

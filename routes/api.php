@@ -12,7 +12,8 @@ use App\Http\Controllers\Api\{
     PaymentProofController,
     TemplateUnlockController,
     UserTemplateController,
-    StatsController
+    StatsController,
+    PasswordResetController
 };
 
 use App\Models\TemplateUnlock;
@@ -122,6 +123,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stats/top-templates', [StatsController::class, 'topTemplates']);
 });
 
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
 Route::get('/stats/revenue', [StatsController::class, 'revenue']);
 Route::get('/stats/pending-payments', [StatsController::class, 'pendingPayments']);
@@ -168,3 +171,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/payments/{id}/approve', [AdminPaymentController::class, 'approve']);
     Route::post('/admin/payments/{id}/disapprove', [AdminPaymentController::class, 'disapprove']);
 });
+
+ 
