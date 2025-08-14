@@ -36,6 +36,11 @@ Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum')
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login',    [AuthController::class, 'login']);
 
+Route::get('/admin/users',    [AuthController::class, 'index']);
+
+Route::get('/admin/user/{id}', [AuthController::class, 'getUserById']);
+
+
 // ✅ Resend verification email (requires auth)
 Route::post('/email/verification-notification', function (Request $request) {
     if ($request->user()->hasVerifiedEmail()) {

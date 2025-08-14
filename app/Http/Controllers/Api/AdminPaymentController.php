@@ -12,9 +12,9 @@ class AdminPaymentController extends Controller
 {
     public function index()
     {
-        $payments = TemplateUnlock::with(['user', 'template'])
-            ->orderBy('submitted_at', 'desc')
-            ->get();
+       $payments = TemplateUnlock::with(['user.profile', 'template'])
+        ->orderBy('submitted_at', 'desc')
+        ->get();
 
         return response()->json($payments);
     }
@@ -22,7 +22,7 @@ class AdminPaymentController extends Controller
     public function approve($id)
     {
         $payment = TemplateUnlock::with(['user', 'template'])->findOrFail($id);
-        $payment->is_approved = 1;
+        $payment->status = 'approved'; // ✅ Updated to use new status column
         $payment->save();
 
         Mail::to($payment->user->email)
@@ -34,7 +34,7 @@ class AdminPaymentController extends Controller
     public function disapprove($id)
     {
         $payment = TemplateUnlock::with(['user', 'template'])->findOrFail($id);
-        $payment->is_approved = 0;
+        $payment->status = 'disapproved'; // ✅ Updated to use new status column
         $payment->save();
 
         Mail::to($payment->user->email)

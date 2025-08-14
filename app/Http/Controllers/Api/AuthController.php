@@ -54,6 +54,17 @@ class AuthController extends Controller
         ], 201);
     }
 
+    public function getUserById($id)
+{
+    $user = User::with('profile.socialLinks')->find($id);
+
+    if (!$user) {
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
+    return response()->json($user);
+}
+
 
     // Login
     public function login(Request $request)
@@ -83,6 +94,15 @@ class AuthController extends Controller
     ],
         ]);
     }
+
+   public function index()
+{
+    // Only return non-admin users
+    $users = User::where('is_admin', 0)->get();
+
+    return response()->json(['users' => $users]);
+}
+
 
     public function user(Request $request)
     {

@@ -42,6 +42,16 @@ class User extends Authenticatable implements MustVerifyEmail
         'remember_token',
     ];
 
+     protected $appends = ['profile_image_url']; // add this line
+
+    public function getProfileImageUrlAttribute()
+    {
+        // If using storage folder, make sure it's publicly accessible
+        return $this->profile_image
+            ? asset('storage/' . $this->profile_image)
+            : asset('defaults/avatar.png');
+    }
+
     /**
      * Get the attributes that should be cast.
      *
