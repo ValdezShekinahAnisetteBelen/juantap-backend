@@ -3,127 +3,197 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-
 use Illuminate\Http\Request;
 use App\Models\Template;
 use App\Models\TemplateUnlock;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class UserTemplateController extends Controller
 {
     // 1. Saved + bought (approved & pending) templates with status
-    public function savedTemplates(Request $request)
-    {
-        $userId = $request->user()->id;
 
-        // Get saved, approved bought, and pending bought template IDs
-        $savedTemplateIds = DB::table('user_saved_templates')
-            ->where('user_id', $userId)
-            ->pluck('template_id')
-            ->toArray();
+    public function showWithStatus(Request $request, $slug)
+{
+    $userId = $request->user()->id ?? null;
 
-        $approvedBoughtTemplateIds = DB::table('template_unlocks')
+    $template = Template::where('slug', $slug)->firstOrFail();
+
+    $status = 'free';
+
+    if ($userId) {
+        $saved = DB::table('user_saved_templates')
             ->where('user_id', $userId)
+            ->where('template_id', $template->id)
+            ->exists();
+
+        $approvedBought = DB::table('template_unlocks')
+            ->where('user_id', $userId)
+            ->where('template_id', $template->id)
             ->where('is_approved', 1)
-            ->pluck('template_id')
-            ->toArray();
+            ->exists();
 
-        $pendingBoughtTemplateIds = DB::table('template_unlocks')
+        $pendingBought = DB::table('template_unlocks')
             ->where('user_id', $userId)
+            ->where('template_id', $template->id)
             ->where('is_approved', 0)
-            ->pluck('template_id')
-            ->toArray();
+            ->exists();
 
-        // Combine unique template IDs
-        $allTemplateIds = array_unique(array_merge(
-            $savedTemplateIds,
-            $approvedBoughtTemplateIds,
-            $pendingBoughtTemplateIds
-        ));
-
-        // Fetch templates info
-        $templates = DB::table('templates')
-            ->whereIn('id', $allTemplateIds)
-            ->select('id', 'slug')
-            ->get();
-
-        // Map templates to status
-        $result = $templates->map(function ($template) use ($approvedBoughtTemplateIds, $pendingBoughtTemplateIds, $savedTemplateIds) {
-            if (in_array($template->id, $approvedBoughtTemplateIds)) {
-                $status = 'bought';
-            } elseif (in_array($template->id, $pendingBoughtTemplateIds)) {
-                $status = 'pending';
-            } elseif (in_array($template->id, $savedTemplateIds)) {
-                $status = 'saved';
-            } else {
-                $status = 'unknown';
-            }
-
-            return [
-                'slug' => $template->slug,
-                'status' => $status,
-            ];
-        });
-
-        return response()->json($result);
+        if ($approvedBought) $status = 'bought';
+        elseif ($pendingBought) $status = 'pending';
+        elseif ($saved) $status = 'saved';
     }
 
+    return response()->json([
+        'id' => $template->id,
+        'slug' => $template->slug,
+        'name' => $template->name,
+        'description' => $template->description,
+        'status' => $status,
+    ]);
+}
 
 
+    public function onlySavedTemplates(Request $request)
+{
+    $userId = $request->user()->id;
 
-    // 📌 Save a template (find by slug)
-    public function saveTemplate(Request $request, $slug)
-    {
-        $template = Template::where('slug', $slug)->firstOrFail();
+    $savedTemplateIds = DB::table('user_saved_templates')
+        ->where('user_id', $userId)
+        ->pluck('template_id')
+        ->toArray();
 
-        $request->user()->savedTemplates()->firstOrCreate([
-            'template_id' => $template->id
-        ]);
+    $templates = DB::table('templates')
+        ->whereIn('id', $savedTemplateIds)
+        ->select('id', 'slug', 'name', 'description')
+        ->get();
 
-        return response()->json(['message' => 'Template saved successfully.']);
-    }
+    $result = $templates->map(function ($template) {
+        return [
+            'id' => $template->id,
+            'slug' => $template->slug,
+            'name' => $template->name,
+            'description' => $template->description,
+            'status' => 'saved',
+        ];
+    });
 
-    // 📌 Unsave a template (find by slug)
-    public function unsaveTemplate(Request $request, $slug)
-    {
-        $template = Template::where('slug', $slug)->firstOrFail();
+    return response()->json($result);
+}
 
-        $request->user()->savedTemplates()->where('template_id', $template->id)->delete();
+        public function templatesStatus(Request $request)
+        {
+            $userId = $request->user()->id;
 
-        return response()->json(['message' => 'Template removed from saved list.']);
-    }
+            $savedTemplateIds = DB::table('user_saved_templates')
+                ->where('user_id', $userId)
+                ->pluck('template_id')
+                ->toArray();
 
+            $approvedBoughtTemplateIds = DB::table('template_unlocks')
+                ->where('user_id', $userId)
+                ->where('is_approved', 1)
+                ->pluck('template_id')
+                ->toArray();
+
+            $pendingBoughtTemplateIds = DB::table('template_unlocks')
+                ->where('user_id', $userId)
+                ->where('is_approved', 0)
+                ->pluck('template_id')
+                ->toArray();
+
+            $allTemplateIds = array_unique(array_merge(
+                $savedTemplateIds,
+                $approvedBoughtTemplateIds,
+                $pendingBoughtTemplateIds
+            ));
+
+            $templates = DB::table('templates')
+                ->whereIn('id', $allTemplateIds)
+                ->select('id', 'slug', 'name', 'description')
+                ->get();
+
+            $result = $templates->map(function ($template) use ($approvedBoughtTemplateIds, $pendingBoughtTemplateIds, $savedTemplateIds) {
+                if (in_array($template->id, $approvedBoughtTemplateIds)) {
+                    $status = 'bought';
+                } elseif (in_array($template->id, $pendingBoughtTemplateIds)) {
+                    $status = 'pending';
+                } elseif (in_array($template->id, $savedTemplateIds)) {
+                    $status = 'saved';
+                } else {
+                    $status = 'unknown';
+                }
+
+                return [
+                    'id' => $template->id,
+                    'slug' => $template->slug,
+                    'name' => $template->name,
+                    'description' => $template->description,
+                    'status' => $status,
+                ];
+            });
+
+            return response()->json($result);
+        }
+
+
+        // Save template
+        public function saveTemplate(Request $request, $template)
+        {
+            $template = is_numeric($template)
+                ? Template::findOrFail($template)
+                : Template::where('slug', $template)->firstOrFail();
+
+            // prevent duplicates & set saved_at
+            $request->user()->savedTemplates()->syncWithoutDetaching([
+                $template->id => ['saved_at' => now()],
+            ]);
+
+            return response()->json(['message' => 'Template saved successfully.']);
+        }
+
+        // Unsave template
+        public function unsaveTemplate(Request $request, $template)
+        {
+            $template = is_numeric($template)
+                ? Template::findOrFail($template)
+                : Template::where('slug', $template)->firstOrFail();
+
+            $request->user()->savedTemplates()->detach($template->id);
+
+            return response()->json(['message' => 'Template removed from saved list.']);
+        }
     // 2. Used templates with full template info
     public function usedTemplates(Request $request)
     {
-        // Get user's usedTemplates relation with related template data eager loaded
         $usedTemplates = $request->user()
             ->usedTemplates()
             ->with('template')
             ->get()
             ->map(function ($usedTemplate) {
                 return [
+                    'id' => $usedTemplate->template->id,
                     'slug' => $usedTemplate->template->slug,
+                    'name' => $usedTemplate->template->name,
+                    'description' => $usedTemplate->template->description,
                     'status' => 'used',
-                    // Add other template fields you want to return here
-                    // e.g. 'name' => $usedTemplate->template->name,
                 ];
             });
 
         return response()->json($usedTemplates);
     }
 
-    // 📌 Mark a template as used (find by slug)
-    public function useTemplate(Request $request, $slug)
+    // 📌 Mark a template as used (by slug or id)
+    public function useTemplate(Request $request, $template)
     {
-        $template = Template::where('slug', $slug)->firstOrFail();
+        $template = is_numeric($template)
+            ? Template::findOrFail($template)
+            : Template::where('slug', $template)->firstOrFail();
 
-        // Remove any existing template usage for this user
         $request->user()->usedTemplates()->delete();
 
-        // Assign the new one
         $request->user()->usedTemplates()->create([
             'template_id' => $template->id
         ]);
@@ -131,7 +201,24 @@ class UserTemplateController extends Controller
         return response()->json(['message' => 'Template set as used.']);
     }
 
+    // 📌 Unuse template (by slug or id)
+    public function unuseTemplate(Request $request, $template)
+    {
+        $template = is_numeric($template)
+            ? Template::findOrFail($template)
+            : Template::where('slug', $template)->firstOrFail();
 
+        $usedRecord = $request->user()->usedTemplates()->where('template_id', $template->id)->first();
+
+        if ($usedRecord) {
+            $usedRecord->delete();
+            return response()->json(['message' => 'Template marked as unused.']);
+        }
+
+        return response()->json(['message' => 'Template was not marked as used.'], 404);
+    }
+
+    // 📌 Submit payment proof
     public function submit(Request $request)
     {
         $request->validate([
@@ -139,7 +226,7 @@ class UserTemplateController extends Controller
             'payment_method' => 'required|string|max:50',
             'reference_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
-            'receipt_img' => 'required|image|max:10240', // max 10MB
+            'receipt_img' => 'required|image|max:10240',
         ]);
 
         $userId = Auth::id();
@@ -148,73 +235,94 @@ class UserTemplateController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        // Find template by slug
-        $template = Template::where('slug', $request->template_slug)->first();
+        $template = Template::where('slug', $request->template_slug)->firstOrFail();
 
-        if (!$template) {
-            return response()->json(['message' => 'Template not found'], 404);
-        }
-
-        // Store receipt image in 'public/payment_receipts'
         $path = $request->file('receipt_img')->store('payment_receipts', 'public');
 
-        // Find existing unlock or create new
         $unlock = TemplateUnlock::firstOrNew([
             'user_id' => $userId,
             'template_id' => $template->id,
         ]);
 
-        // Update or set fields
         $unlock->unlocked_at = $unlock->unlocked_at ?? now();
         $unlock->receipt_img = $path;
         $unlock->payment_method = $request->payment_method;
         $unlock->reference_number = $request->reference_number;
         $unlock->notes = $request->notes;
-        $unlock->is_approved = false; // default to false (pending)
+        $unlock->is_approved = false;
         $unlock->submitted_at = now();
-
         $unlock->save();
 
         return response()->json(['message' => 'Payment proof submitted successfully']);
     }
-    public function unuseTemplate(Request $request, $slug)
-    {
-        $user = $request->user();
-        $template = Template::where('slug', $slug)->firstOrFail();
+public function getUsedTemplate($username)
+{
+    $user = User::where('username', $username)->firstOrFail();
 
-        // Find the user's used template record
-        $usedRecord = $user->usedTemplates()->where('template_id', $template->id)->first();
+    $usedTemplates = $user->usedTemplates()
+        ->with('template')
+        ->orderByDesc('started_at')
+        ->get();
 
-        if ($usedRecord) {
-            $usedRecord->delete();  // Remove the "used" mark
-            return response()->json(['message' => 'Template marked as unused.']);
-        }
-
-        return response()->json(['message' => 'Template was not marked as used.'], 404);
+    if ($usedTemplates->isEmpty()) {
+        return response()->json([]);
     }
-    public function getUsedTemplate($username)
-    {
-        // Find user by username
-        $user = User::where('username', $username)->first();
 
-        if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
-        }
+    $defaultColors = [
+        'primary' => '#1f2937',
+        'secondary' => '#6b7280',
+        'accent' => '#3b82f6',
+        'background' => '#ffffff',
+        'text' => '#111827',
+    ];
 
-        // Get this user's used templates with related template data
-        $usedTemplates = $user->usedTemplates()
-            ->with('template')
-            ->get()
-            ->map(function ($usedTemplate) {
-                return [
-                    'slug' => $usedTemplate->template->slug,
-                    'status' => 'used',
-                    // You can include other fields here if needed:
-                    'name' => $usedTemplate->template->name,
-                    'description' => $usedTemplate->template->description,
-                ];
-            });
+    $defaultFonts = [
+        'heading' => 'Inter',
+        'body' => 'Inter',
+    ];
 
-        return response()->json($usedTemplates);
-    }
+    $result = $usedTemplates->map(function ($used) use ($defaultColors, $defaultFonts) {
+        $template = $used->template;
+
+        // Merge colors
+        $colors = array_merge(
+            $defaultColors,
+            array_filter([
+                'primary' => $template->primary_color ?? null,
+                'secondary' => $template->secondary_color ?? null,
+                'accent' => $template->accent_color ?? null,
+                'background' => $template->background_color ?? null,
+                'text' => $template->text_color ?? null,
+            ], fn($v) => $v !== null && $v !== '')
+        );
+
+        // Merge fonts
+        $fonts = array_merge(
+            $defaultFonts,
+            array_filter([
+                'heading' => $template->heading_font ?? null,
+                'body' => $template->body_font ?? null,
+            ], fn($v) => $v !== null && $v !== '')
+        );
+
+        return [
+            'id' => $template->id ?? null,
+            'slug' => $template->slug ?? null,
+            'name' => $template->name ?? null,
+            'description' => $template->description ?? null,
+            'thumbnail_url' => $template->thumbnail_url
+                ? Storage::url($template->thumbnail_url)
+                : Storage::url('placeholder.svg'),
+            'sections' => json_decode($template->sections ?? '[]', true),
+            'colors' => $colors,
+            'fonts' => $fonts,
+            'status' => 'used',
+        ];
+    });
+
+    return response()->json($result);
+}
+
+
+
 }

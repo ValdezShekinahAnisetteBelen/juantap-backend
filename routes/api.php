@@ -106,12 +106,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/social-links', [SocialLinkController::class, 'store']);
     Route::put('/profile/social-links/{id}', [SocialLinkController::class, 'update']);
 
-    // TEMPLATES
-    Route::get('/templates', [TemplateController::class, 'index']);
-    Route::post('/templates', [TemplateController::class, 'store']); // Admin only
-    Route::put('/templates/{id}', [TemplateController::class, 'update']); // Admin only
-    Route::delete('/templates/{id}', [TemplateController::class, 'destroy']); // Admin only
-
     // PAYMENT PROOFS
     Route::post('/payment-proofs', [PaymentProofController::class, 'store']);
     Route::get('/payment-proofs', [PaymentProofController::class, 'index']); // Admin only
@@ -127,6 +121,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/stats/top-templates', [StatsController::class, 'topTemplates']);
 });
+
+    Route::get('/templates', [TemplateController::class, 'index']);
+    Route::get('/templates/{slug}', [TemplateController::class, 'show']);
+    Route::post('/templates/store', [TemplateController::class, 'store']);
 
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
@@ -157,17 +155,17 @@ Route::middleware('auth:sanctum')->get('/stats/templates-count', function () {
 Route::middleware('auth:sanctum')->get('/user-profile', [ProfileController::class, 'me']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    // Saved templates
-    Route::get('/templates/saved', [UserTemplateController::class, 'savedTemplates']);
+    Route::get('/templates/status', [UserTemplateController::class, 'templatesStatus']);
+    Route::get('/templates/saved', [UserTemplateController::class, 'onlySavedTemplates']);
     Route::post('/templates/saved/{template}', [UserTemplateController::class, 'saveTemplate']);
     Route::delete('/templates/saved/{template}', [UserTemplateController::class, 'unsaveTemplate']);
-
-    // Used templates
+    
     Route::get('/templates/used', [UserTemplateController::class, 'usedTemplates']);
-    Route::post('/templates/used/{template}', [UserTemplateController::class, 'useTemplate']);
+    Route::post('/templates/used/{slug}', [UserTemplateController::class, 'useTemplate']);
     Route::delete('/templates/used/{slug}', [UserTemplateController::class, 'unuseTemplate']);
+    Route::get('/templates/{slug}/status', [UserTemplateController::class, 'showWithStatus']);
 });
-Route::post('/payment/submit', [UserTemplateController::class, 'submit'])->middleware('auth:sanctum');;
+Route::post('/payment/submit', [UserTemplateController::class, 'submit'])->middleware('auth:sanctum');
 // routes/api.php
 Route::get('/profile/{username}/used-templates', [UserTemplateController::class, 'getUsedTemplate']);
 Route::get('/profile/{username}', [ProfileController::class, 'show']);

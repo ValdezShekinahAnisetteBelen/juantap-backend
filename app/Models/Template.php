@@ -30,6 +30,16 @@ class Template extends Model
     /**
      * Use slug instead of id for route binding (optional).
      */
+       protected $casts = [
+        'features' => 'array',
+        'colors' => 'array',
+        'fonts' => 'array',
+        'tags' => 'array',
+        'is_premium' => 'boolean',
+        'is_popular' => 'boolean',
+        'is_new' => 'boolean',
+    ];
+
     public function getRouteKeyName()
     {
         return 'slug';

@@ -6,10 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserUsedTemplate extends Model
 {
-    protected $fillable = ['user_id', 'template_id'];
+    protected $table = 'user_used_templates'; // make sure this matches table name
 
-    // Enable timestamps (make sure DB table has created_at, updated_at)
-    public $timestamps = true;
+    protected $fillable = ['user_id', 'template_id'];
 
     public function template()
     {
@@ -21,3 +20,4 @@ class UserUsedTemplate extends Model
         return $this->belongsTo(User::class);
     }
 }
+
