@@ -183,7 +183,62 @@ class UserTemplateController extends Controller
             });
 
         return response()->json($usedTemplates);
+    }public function fetchBoughted(Request $request)
+{
+    try {
+        $userId = $request->user()->id;
+
+        // Fetch purchases for this user from template_unlocks
+       $boughtTemplates = DB::table('template_unlocks')
+    ->join('templates', 'template_unlocks.template_id', '=', 'templates.id')
+    ->where('template_unlocks.user_id', $userId)
+    ->select(
+        'templates.id',
+        'templates.slug',
+        'templates.name',
+        'templates.description',
+        'template_unlocks.status',
+        'template_unlocks.is_approved',
+        'template_unlocks.unlocked_at',
+        'template_unlocks.payment_method',
+        'template_unlocks.reference_number'
+    )
+    ->get()
+    ->map(function ($item) {
+        // normalize statuses
+        if ($item->status === 'approved' || $item->is_approved == 1) {
+            $item->status = 'bought';
+        } elseif ($item->status === 'pending') {
+            $item->status = 'pending';
+        } else {
+            $item->status = 'rejected'; // optional
+        }
+        return $item;
+    });
+
+
+        if ($boughtTemplates->isEmpty()) {
+            return response()->json([
+                'message' => 'No bought templates found',
+                'data' => []
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Bought templates fetched successfully',
+            'data' => $boughtTemplates
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('fetchBoughted error: ' . $e->getMessage());
+
+        return response()->json([
+            'error' => 'Something went wrong',
+            'details' => $e->getMessage()
+        ], 500);
     }
+}
+
 
     // 📌 Mark a template as used (by slug or id)
     public function useTemplate(Request $request, $template)

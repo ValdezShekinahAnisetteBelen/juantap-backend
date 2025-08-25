@@ -158,15 +158,16 @@ Route::middleware('auth:sanctum')->get('/user-profile', [ProfileController::clas
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/templates/status', [UserTemplateController::class, 'templatesStatus']);
-    Route::get('/templates/saved', [UserTemplateController::class, 'onlySavedTemplates']);
+    Route::get('/templates1/saved', [UserTemplateController::class, 'onlySavedTemplates']);
     Route::post('/templates/saved/{template}', [UserTemplateController::class, 'saveTemplate']);
     Route::delete('/templates/saved/{template}', [UserTemplateController::class, 'unsaveTemplate']);
     
-    Route::get('/templates/used', [UserTemplateController::class, 'usedTemplates']);
+    Route::get('/templates1/used', [UserTemplateController::class, 'usedTemplates']);
     Route::post('/templates/used/{slug}', [UserTemplateController::class, 'useTemplate']);
     Route::delete('/templates/used/{slug}', [UserTemplateController::class, 'unuseTemplate']);
     Route::get('/templates/{slug}/status', [UserTemplateController::class, 'showWithStatus']);
         Route::get('/templates2', [UserTemplateController::class, 'userTemplatesWithStatus']);
+Route::get('/templates1/boughted', [UserTemplateController::class, 'fetchBoughted']);
 
 });
 Route::post('/payment/submit', [UserTemplateController::class, 'submit'])->middleware('auth:sanctum');
