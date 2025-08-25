@@ -88,132 +88,91 @@ class ProfileController extends Controller
 
         return response()->json(['message' => 'Profile updated successfully.']);
     }
-    public function me(Request $request)
-    {
-        $user = $request->user()->load([
-            'profile.socialLinks' // eager load profile + social links
-        ]);
+public function me(Request $request)
+{
+    $user = $request->user()->load([
+        'profile.socialLinks'
+    ]);
 
-        return response()->json([
-            'id'           => $user->id,
-            'name'         => $user->name,
-            'firstname'    => $user->firstname,
-            'lastname'     => $user->lastname,
-            'display_name' => $user->display_name,
-            'username'     => $user->username,
-            'email'        => $user->email,
-            'profile_image' => $user->profile_image,
-            'is_admin'     => $user->is_admin,
-            'profile'      => [
-                'bio'               => $user->profile->bio ?? '',
-                'phone'             => $user->profile->phone ?? '',
-                'website'           => $user->profile->website ?? '',
-                'location'          => $user->profile->location ?? '',
-                'template_id'       => $user->profile->template_id,
-                'background_type'   => $user->profile->background_type,
-                'background_value'  => $user->profile->background_value,
-                'font_style'        => $user->profile->font_style,
-                'font_size'         => $user->profile->font_size,
-                'button_style'      => $user->profile->button_style,
-                'accent_color'      => $user->profile->accent_color,
-                'nfc_redirect_url'  => $user->profile->nfc_redirect_url,
-                'is_published'      => $user->profile->is_published,
-                'socialLinks' => $user->profile->socialLinks->map(function ($link) {
-                    return [
-                        'id'        => $link->id,           
-                        'platform'  => $link->platform,      
-                        'username'  => $link->display_name,
-                        'url'       => $link->url,
-                        'isVisible' => (bool) $link->is_visible, 
-                    ];
-                }),
+    return response()->json([
+        'id'           => $user->id,
+        'name'         => $user->name,
+        'firstname'    => $user->firstname,
+        'lastname'     => $user->lastname,
+        'display_name' => $user->display_name,
+        'username'     => $user->username,
+        'email'        => $user->email,
+        'avatar_url'   => $user->profile_image
+        ? asset("storage/{$user->profile_image}") // ✅ resolves to /storage/avatars/xxxx.png
+        : asset("storage/defaults/avatar.png"),
+        'is_admin'     => $user->is_admin,
+        'profile'      => [
+            'bio'              => $user->profile->bio ?? '',
+            'phone'            => $user->profile->phone ?? '',
+            'website'          => $user->profile->website ?? '',
+            'location'         => $user->profile->location ?? '',
+            'template_id'      => $user->profile->template_id,
+            'background_type'  => $user->profile->background_type,
+            'background_value' => $user->profile->background_value,
+            'font_style'       => $user->profile->font_style,
+            'font_size'        => $user->profile->font_size,
+            'button_style'     => $user->profile->button_style,
+            'accent_color'     => $user->profile->accent_color,
+            'nfc_redirect_url' => $user->profile->nfc_redirect_url,
+            'is_published'     => $user->profile->is_published,
+            'socialLinks' => $user->profile->socialLinks->map(function ($link) {
+                return [
+                    'id'        => $link->id,
+                    'platform'  => $link->platform,
+                    'username'  => $link->display_name,
+                    'url'       => $link->url,
+                    'isVisible' => (bool) $link->is_visible,
+                ];
+            }),
+        ]
+    ], 200);
+}
 
-            ]
-        ], 200);
-    }
-   
 public function show($username)
 {
-    $user = User::where('username', $username)
-        ->with(['profile.socialLinks'])
-        ->first();
+    $user = User::where('username', $username)->with('profile.socialLinks')->first();
 
     if (!$user) {
-        return response()->json(['message' => 'Profile not found'], 404);
+        return response()->json(['error' => 'User not found'], 404);
     }
 
-    // Try to get the template from profile
+    // Load template via template_slug if exists
     $template = null;
-    if ($user->profile && $user->profile->template_id) {
-        $template = Template::find($user->profile->template_id);
-    }
-
-    // Fallback to default template if none is set
-    if (!$template) {
-        $template = Template::where('slug', 'minimal-clean')->first();
-    }
-
-    if ($template) {
-        // Decode JSON fields
-        $template->features = json_decode($template->features, true) ?? [];
-        $template->colors   = json_decode($template->colors, true) ?? [];
-        $template->fonts    = json_decode($template->fonts, true) ?? [];
-        $template->tags     = json_decode($template->tags, true) ?? [];
-
-        // Merge default colors & fonts
-        $defaultColors = [
-            'primary' => '#1f2937',
-            'secondary' => '#6b7280',
-            'accent' => '#3b82f6',
-            'background' => '#ffffff',
-            'text' => '#111827',
-        ];
-        $template->colors = array_merge($defaultColors, array_filter($template->colors, fn($v) => $v !== null && $v !== ''));
-
-        $defaultFonts = [
-            'heading' => 'Inter',
-            'body' => 'Inter',
-        ];
-        $template->fonts = array_merge($defaultFonts, array_filter($template->fonts, fn($v) => $v !== null && $v !== ''));
+    if ($user->template_slug) {
+        $template = \App\Models\Template::where('slug', $user->template_slug)->first();
     }
 
     return response()->json([
         'id' => $user->id,
-        'name' => $user->name,
-        'firstname' => $user->firstname,
-        'lastname' => $user->lastname,
-        'display_name' => $user->display_name,
         'username' => $user->username,
+        'display_name' => $user->display_name,
+        'name' => $user->name,
         'email' => $user->email,
-        'profile_image' => $user->profile_image,
-        'is_admin' => $user->is_admin,
+        'avatar_url' => $user->profile_image
+            ? asset("storage/{$user->profile_image}") // ✅ full URL
+            : asset("storage/defaults/avatar.png"),
+        'template' => $template,
         'profile' => [
             'bio' => $user->profile->bio ?? '',
             'phone' => $user->profile->phone ?? '',
             'website' => $user->profile->website ?? '',
             'location' => $user->profile->location ?? '',
-            'template_id' => $user->profile->template_id ?? $template?->id,
-            'background_type' => $user->profile->background_type,
-            'background_value' => $user->profile->background_value,
-            'font_style' => $user->profile->font_style,
-            'font_size' => $user->profile->font_size,
-            'button_style' => $user->profile->button_style,
-            'accent_color' => $user->profile->accent_color,
-            'nfc_redirect_url' => $user->profile->nfc_redirect_url,
-            'is_published' => $user->profile->is_published,
-            'socialLinks' => $user->profile->socialLinks->map(function ($link) {
+            'socialLinks' => $user->profile->socialLinks->map(function($link) {
                 return [
                     'id' => $link->id,
                     'platform' => $link->platform,
                     'username' => $link->display_name,
                     'url' => $link->url,
-                    'isVisible' => (bool) $link->is_visible,
+                    'isVisible' => (bool) $link->is_visible
                 ];
-            }),
-        ],
-        'template' => $template,
-    ], 200);
-}
-
+            })
+        ]
+    ]);
+    }
 
 }

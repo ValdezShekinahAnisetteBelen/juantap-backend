@@ -125,7 +125,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/templates', [TemplateController::class, 'index']);
     Route::get('/templates/{slug}', [TemplateController::class, 'show']);
     Route::post('/templates/store', [TemplateController::class, 'store']);
-
+    Route::put('/templates/{id}', [TemplateController::class, 'update']);
+    Route::get('/templates/id/{id}', [TemplateController::class, 'showById']);
+    
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
@@ -164,6 +166,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/templates/used/{slug}', [UserTemplateController::class, 'useTemplate']);
     Route::delete('/templates/used/{slug}', [UserTemplateController::class, 'unuseTemplate']);
     Route::get('/templates/{slug}/status', [UserTemplateController::class, 'showWithStatus']);
+        Route::get('/templates2', [UserTemplateController::class, 'userTemplatesWithStatus']);
+
 });
 Route::post('/payment/submit', [UserTemplateController::class, 'submit'])->middleware('auth:sanctum');
 // routes/api.php

@@ -322,6 +322,68 @@ public function getUsedTemplate($username)
 
     return response()->json($result);
 }
+public function userTemplatesWithStatus(Request $request)
+{
+    $userId = $request->user()->id;
+
+    $templates = Template::all();
+
+    $mapped = $templates->map(function ($template) use ($userId) {
+        $status = 'free';
+
+        if ($userId) {
+            $saved = DB::table('user_saved_templates')
+                ->where('user_id', $userId)
+                ->where('template_id', $template->id)
+                ->exists();
+
+            $approvedBought = DB::table('template_unlocks')
+                ->where('user_id', $userId)
+                ->where('template_id', $template->id)
+                ->where('is_approved', 1)
+                ->exists();
+
+            $pendingBought = DB::table('template_unlocks')
+                ->where('user_id', $userId)
+                ->where('template_id', $template->id)
+                ->where('is_approved', 0)
+                ->exists();
+
+            if ($approvedBought) $status = 'bought';
+            elseif ($pendingBought) $status = 'pending';
+            elseif ($saved) $status = 'saved';
+        }
+
+        return [
+            'id' => $template->id,
+            'slug' => $template->slug,
+            'name' => $template->name,
+            'description' => $template->description,
+            'category' => $template->category,
+            'is_premium' => (bool) $template->is_premium,
+            'price' => $template->price,
+            'original_price' => $template->original_price,
+            'discount' => $template->discount,
+            'preview_url' => Storage::url($template->preview_url ?? 'placeholder.svg'),
+            'thumbnail_url' => Storage::url($template->thumbnail_url ?? 'placeholder.svg'),
+            'features' => $template->features,
+            'colors' => $template->colors,
+            'fonts' => $template->fonts,
+            'layout' => $template->layout,
+            'tags' => $template->tags,
+            'is_popular' => (bool) $template->is_popular,
+            'is_new' => (bool) $template->is_new,
+            'downloads' => $template->downloads,
+            'created_at' => $template->created_at->toDateString(),
+            'updated_at' => $template->updated_at->toDateString(),
+
+            // ✅ Add the status field here
+            'status' => $status,
+        ];
+    });
+
+    return response()->json($mapped->values()->all());
+}
 
 
 
