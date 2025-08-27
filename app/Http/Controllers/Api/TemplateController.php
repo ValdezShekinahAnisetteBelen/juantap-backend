@@ -9,36 +9,51 @@ use App\Models\Template;
 
 class TemplateController extends Controller
 {
-    public function index()
-    {
-        $templates = Template::all()->map(function ($template) {
-            return [
-                'id' => $template->id,
-                'slug' => $template->slug,
-                'name' => $template->name,
-                'description' => $template->description,
-                'category' => $template->category,
-                'is_premium' => (bool) $template->is_premium,
-                'price' => $template->price,
-                'original_price' => $template->original_price,
-                'discount' => $template->discount,
-                'preview_url' => Storage::url($template->preview_url ?? 'placeholder.svg'),
-                'thumbnail_url' => Storage::url($template->thumbnail_url ?? 'placeholder.svg'),
-                'features' => $template->features,
-                'colors' => $template->colors,
-                'fonts' => $template->fonts,
-                'layout' => $template->layout,
-                'tags' => $template->tags,
-                'is_popular' => (bool) $template->is_popular,
-                'is_new' => (bool) $template->is_new,
-                'downloads' => $template->downloads,
-                'created_at' => $template->created_at->toDateString(),
-                'updated_at' => $template->updated_at->toDateString(),
-            ];
-        });
+  public function index(Request $request)
+{
+    $query = Template::query();
 
-        return response()->json($templates->values()->all());
+    // If the request has "hidden" param, filter explicitly
+    if ($request->has('hidden')) {
+        $hidden = filter_var($request->hidden, FILTER_VALIDATE_BOOLEAN);
+        $query->where('is_hidden', $hidden ? 1 : 0);
+    } else {
+        // If no "hidden" param, and user is not admin, hide hidden templates
+        if (!$request->user() || !$request->user()->is_admin) {
+            $query->where('is_hidden', false);
+        }
     }
+
+    $templates = $query->get()->map(function ($template) {
+        return [
+            'id' => $template->id,
+            'slug' => $template->slug,
+            'name' => $template->name,
+            'description' => $template->description,
+            'category' => $template->category,
+            'is_premium' => (bool) $template->is_premium,
+            'price' => $template->price,
+            'original_price' => $template->original_price,
+            'discount' => $template->discount,
+            'preview_url' => Storage::url($template->preview_url ?? 'placeholder.svg'),
+            'thumbnail_url' => Storage::url($template->thumbnail_url ?? 'placeholder.svg'),
+            'features' => $template->features,
+            'colors' => $template->colors,
+            'fonts' => $template->fonts,
+            'layout' => $template->layout,
+            'tags' => $template->tags,
+            'is_popular' => (bool) $template->is_popular,
+            'is_new' => (bool) $template->is_new,
+            'downloads' => $template->downloads,
+            'is_hidden' => (bool) $template->is_hidden,
+            'created_at' => $template->created_at->toDateString(),
+            'updated_at' => $template->updated_at->toDateString(),
+        ];
+    });
+
+    return response()->json($templates->values()->all());
+}
+
 
     public function show($slug)
     {
@@ -51,7 +66,7 @@ class TemplateController extends Controller
         return response()->json($template);
     }
 
-    public function update(Request $request, $id)
+   public function update(Request $request, $id)
 {
     $template = Template::find($id);
 
@@ -61,6 +76,7 @@ class TemplateController extends Controller
 
     $data = $request->all();
 
+    // Decode JSON strings if passed as string
     foreach (['features', 'colors', 'fonts', 'tags'] as $field) {
         if (isset($data[$field]) && is_string($data[$field])) {
             $decoded = json_decode($data[$field], true);
@@ -70,6 +86,7 @@ class TemplateController extends Controller
         }
     }
 
+    // ✅ Add is_hidden to validation
     $validated = validator($data, [
         'slug' => 'sometimes|string|unique:templates,slug,' . $template->id,
         'name' => 'sometimes|string|max:255',
@@ -89,7 +106,13 @@ class TemplateController extends Controller
         'is_popular' => 'boolean',
         'is_new' => 'boolean',
         'downloads' => 'nullable|integer',
+        'is_hidden' => 'boolean', // 👈 new
     ])->validate();
+
+    // 🔥 If premium, force category
+    if (isset($validated['is_premium']) && $validated['is_premium']) {
+        $validated['category'] = 'premium';
+    }
 
     $template->update($validated);
 
@@ -99,6 +122,17 @@ class TemplateController extends Controller
     ]);
 }
 
+   public function toggleHidden($id)
+    {
+        $template = Template::findOrFail($id);
+        $template->is_hidden = !$template->is_hidden;
+        $template->save();
+
+        return response()->json([
+            'success' => true,
+            'is_hidden' => $template->is_hidden
+        ]);
+    }
 
 public function store(Request $request)
 {
@@ -133,6 +167,8 @@ public function store(Request $request)
         'is_popular' => 'boolean',
         'is_new' => 'boolean',
         'downloads' => 'nullable|integer',
+
+        
     ])->validate();
 
     $template = Template::create($validated);
@@ -153,6 +189,17 @@ public function showById($id)
 
     return response()->json($template);
 }
+
+public function checkSlug($slug)
+{
+    $exists = \App\Models\Template::where('slug', $slug)->exists();
+
+    return response()->json([
+        'exists' => $exists
+    ]);
+}
+
+
 
 
 }

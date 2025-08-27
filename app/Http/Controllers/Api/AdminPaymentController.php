@@ -19,27 +19,37 @@ class AdminPaymentController extends Controller
         return response()->json($payments);
     }
 
-    public function approve($id)
-    {
-        $payment = TemplateUnlock::with(['user', 'template'])->findOrFail($id);
-        $payment->status = 'approved'; // ✅ Updated to use new status column
-        $payment->save();
+   public function approve($id)
+{
+    $payment = TemplateUnlock::with(['user', 'template'])->findOrFail($id);
+    $payment->status = 'approved';   // update status
+    $payment->is_approved = 1;       // ✅ set boolean flag
+    $payment->save();
 
-        Mail::to($payment->user->email)
-            ->send(new PaymentStatusMail($payment->user, 'approved', $payment->template));
+    Mail::to($payment->user->email)
+        ->send(new PaymentStatusMail($payment->user, 'approved', $payment->template));
 
-        return response()->json(['message' => 'Payment approved and email sent']);
-    }
+    return response()->json(['message' => 'Payment approved and email sent']);
+}
 
-    public function disapprove($id)
-    {
-        $payment = TemplateUnlock::with(['user', 'template'])->findOrFail($id);
-        $payment->status = 'disapproved'; // ✅ Updated to use new status column
-        $payment->save();
+public function disapprove($id)
+{
+    $payment = TemplateUnlock::with(['user', 'template'])->findOrFail($id);
+    $payment->status = 'disapproved'; // update status
+    $payment->is_approved = 0;        // ✅ reset boolean flag
+    $payment->save();
 
-        Mail::to($payment->user->email)
-            ->send(new PaymentStatusMail($payment->user, 'disapproved', $payment->template));
+    Mail::to($payment->user->email)
+        ->send(new PaymentStatusMail($payment->user, 'disapproved', $payment->template));
 
-        return response()->json(['message' => 'Payment disapproved and email sent']);
-    }
+    return response()->json(['message' => 'Payment disapproved and email sent']);
+}
+public function count()
+{
+    $pending = TemplateUnlock::where('status', 'pending')->count();
+
+    return response()->json([
+        'pending' => $pending
+    ]);
+}
 }

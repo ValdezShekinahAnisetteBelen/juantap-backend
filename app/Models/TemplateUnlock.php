@@ -19,6 +19,7 @@ class TemplateUnlock extends Model
         'notes',
         'is_approved',
         'submitted_at',
+        'status',
     ];
 
     // Cast timestamps and booleans properly

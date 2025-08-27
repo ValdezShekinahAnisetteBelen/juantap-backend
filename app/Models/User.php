@@ -29,7 +29,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'firstname',
         'lastname',
         'display_name',
-        'username'
+        'username',
+        'gcash_account',
+        'paymaya_account',
+        'bpi_account',
+        'bdo_account',
     ];
 
     /**

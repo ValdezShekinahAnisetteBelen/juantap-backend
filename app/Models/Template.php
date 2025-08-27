@@ -24,7 +24,8 @@ class Template extends Model
         'tags',
         'is_popular',
         'is_new',
-        'downloads'
+        'downloads',
+        'is_hidden'
     ];
 
     /**
@@ -38,6 +39,7 @@ class Template extends Model
         'is_premium' => 'boolean',
         'is_popular' => 'boolean',
         'is_new' => 'boolean',
+        'is_hidden' => 'boolean',
     ];
 
     public function getRouteKeyName()

@@ -15,7 +15,6 @@ use App\Models\UserUsedTemplate;
 use App\Models\UserSavedTemplate;
 use App\Models\Profile;
 
-
 class StatsController extends Controller
 {
     public function revenue()
@@ -29,7 +28,7 @@ class StatsController extends Controller
         ]);
     }
 
-     public function pendingPayments()
+    public function pendingPayments()
     {
         $pendingCount = TemplateUnlock::where('is_approved', false)->count();
 
@@ -38,9 +37,8 @@ class StatsController extends Controller
         ]);
     }
 
-   public function userGrowth()
+    public function userGrowth()
     {
-        // Group users by month and count them
         $data = User::select(
                 DB::raw("DATE_FORMAT(created_at, '%b') as name"),
                 DB::raw("COUNT(*) as users")
@@ -52,41 +50,56 @@ class StatsController extends Controller
         return response()->json($data);
     }
 
-   public function templateDistribution()
-{
-    $data = Template::select(
-            DB::raw("CASE WHEN is_premium = 0 THEN 'Free' ELSE 'Premium' END as name"),
-            DB::raw("COUNT(*) as value")
-        )
-        ->groupBy('is_premium')
-        ->get()
-        ->map(function ($row) {
-            return [
-                'name' => $row->name,
-                'value' => $row->value,
-                'color' => $row->name === 'Free' ? '#3b82f6' : '#8b5cf6',
-            ];
-        });
+    public function templateDistribution()
+    {
+        $data = Template::select(
+                DB::raw("CASE WHEN is_premium = 0 THEN 'Free' ELSE 'Premium' END as name"),
+                DB::raw("COUNT(*) as value")
+            )
+            ->groupBy('is_premium')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'name' => $row->name,
+                    'value' => $row->value,
+                    'color' => $row->name === 'Free' ? '#3b82f6' : '#8b5cf6',
+                ];
+            });
 
-    return response()->json($data);
-}
-
+        return response()->json($data);
+    }
 public function topTemplates()
 {
-    $templates = \App\Models\Template::take(5)->get()->map(function ($template) {
-        return [
-            'id' => $template->id,
-            'name' => $template->name,
-            'category' => $template->is_premium ? 'Premium' : 'Free',
-            'downloads' => $template->downloads ?? 0,
-            'views' => $template->views ?? 0,
-            'revenue' => $template->is_premium
-                ? (($template->downloads ?? 0) * ($template->price ?? 0))
-                : 0,
-            'thumbnail' => $template->thumbnail_url ?? null,
-            'trend' => 'up',
-        ];
-    });
+    $templates = DB::table('templates')
+        ->leftJoin('template_unlocks', function ($join) {
+            $join->on('templates.id', '=', 'template_unlocks.template_id')
+                 ->where('template_unlocks.is_approved', 1);
+        })
+        ->leftJoin('user_saved_templates', 'templates.id', '=', 'user_saved_templates.template_id')
+        ->select(
+            'templates.id',
+            'templates.slug',
+            'templates.name',
+            'templates.category',
+            'templates.price',
+            'templates.thumbnail_url',
+            DB::raw('COUNT(DISTINCT template_unlocks.id) as unlocks'),
+            DB::raw('COUNT(DISTINCT user_saved_templates.id) as saves'),
+            DB::raw('COALESCE(COUNT(DISTINCT template_unlocks.id) * templates.price, 0) as revenue')
+        )
+        ->groupBy(
+            'templates.id',
+            'templates.slug',
+            'templates.name',
+            'templates.category',
+            'templates.price',
+            'templates.thumbnail_url'
+        )
+        ->orderByDesc('unlocks')      // primary sort
+        ->orderByDesc('revenue')      // secondary sort
+        ->orderByDesc('saves')        // tertiary sort
+        ->limit(5)                     // only top 5
+        ->get();
 
     return response()->json($templates);
 }

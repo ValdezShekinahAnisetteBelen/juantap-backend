@@ -13,88 +13,114 @@ use Illuminate\Support\Facades\Storage;
 class ProfileController extends Controller
 {
     public function storeOrUpdate(Request $request)
-    {
-        $user = $request->user();
-
-        $validated = $request->validate([
-            'name' => 'nullable|string|max:255',
-            'firstname' => 'nullable|string|max:255',
-            'lastname' => 'nullable|string|max:255',
-            'display_name' => 'nullable|string|max:255',
-            'username' => 'nullable|string|max:255|unique:users,username,' . $user->id,
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-
-            // Profile-specific fields (stored in `profiles` table)
-            'bio' => 'nullable|string',
-            'phone' => 'nullable|string|max:20',
-            'website' => 'nullable|string|max:255',
-            'location' => 'nullable|string|max:255',
-
-            'social_links' => 'array',
-            'social_links.*.id' => 'nullable|integer|exists:social_links,id',
-            'social_links.*.platform' => 'required|string|max:50',
-            'social_links.*.url' => 'required|url|max:255',
-            'social_links.*.display_name' => 'nullable|string|max:100',
-            'social_links.*.is_visible' => 'boolean',
-
-        ]);
-
-        // ✅ Handle avatar upload
-        if ($request->hasFile('avatar')) {
-            if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
-                Storage::disk('public')->delete($user->profile_image);
-            }
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
-            $user->profile_image = $avatarPath;
-        }
-
-        // ✅ Update fields in users table
-        $user->fill([
-            'name' => $validated['name'] ?? $user->name,
-            'username' => $validated['username'] ?? $user->username,
-            'display_name' => $validated['display_name'] ?? $user->display_name,
-        ])->save();
-
-        $profile = $user->profile()->updateOrCreate([], [
-            'bio' => $validated['bio'] ?? null,
-            'phone' => $validated['phone'] ?? null,
-            'website' => $validated['website'] ?? null,
-            'location' => $validated['location'] ?? null,
-        ]);
-
-
-        if (isset($validated['social_links'])) {
-            $existingIds = [];
-
-            foreach ($validated['social_links'] as $linkData) {
-                if (isset($linkData['id'])) {
-                    $link = SocialLink::where('id', $linkData['id'])
-                        ->where('profile_id', $profile->id)
-                        ->first();
-
-                    if ($link) {
-                        $link->update($linkData);
-                        $existingIds[] = $link->id;
-                    }
-                } else {
-                    $link = $profile->socialLinks()->create($linkData);
-                    $existingIds[] = $link->id;
-                }
-            }
-
-            // Optionally delete removed links
-            $profile->socialLinks()->whereNotIn('id', $existingIds)->delete();
-        }
-
-        return response()->json(['message' => 'Profile updated successfully.']);
-    }
-public function me(Request $request)
 {
-    $user = $request->user()->load([
-        'profile.socialLinks'
+    $user = $request->user();
+
+    $validated = $request->validate([
+        'name' => 'nullable|string|max:255',
+        'firstname' => 'nullable|string|max:255',
+        'lastname' => 'nullable|string|max:255',
+        'display_name' => 'nullable|string|max:255',
+        'username' => 'nullable|string|max:255|unique:users,username,' . $user->id,
+        'avatar' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+
+        // Profile-specific fields
+        'bio' => 'nullable|string',
+        'phone' => 'nullable|string|max:20',
+        'website' => 'nullable|string|max:255',
+        'location' => 'nullable|string|max:255',
+
+        'social_links' => 'array',
+        'social_links.*.id' => 'nullable|integer|exists:social_links,id',
+        'social_links.*.platform' => 'required|string|max:50',
+        'social_links.*.url' => 'required|url|max:255',
+        'social_links.*.display_name' => 'nullable|string|max:100',
+        'social_links.*.is_visible' => 'boolean',
+
+        // Payment accounts
+        'gcash' => 'nullable|string|max:20',
+        'paymaya' => 'nullable|string|max:20',
+        'bpi' => 'nullable|string|max:20',
+        'bdo' => 'nullable|string|max:20',
     ]);
 
-    return response()->json([
+    // Handle avatar upload
+    if ($request->hasFile('avatar')) {
+        if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
+            Storage::disk('public')->delete($user->profile_image);
+        }
+        $avatarPath = $request->file('avatar')->store('avatars', 'public');
+        $user->profile_image = $avatarPath;
+    }
+
+    // Update user table including payment accounts
+    $user->fill([
+        'name' => $validated['name'] ?? $user->name,
+        'username' => $validated['username'] ?? $user->username,
+        'display_name' => $validated['display_name'] ?? $user->display_name,
+        'gcash_account' => $validated['gcash'] ?? $user->gcash_account,
+        'paymaya_account' => $validated['paymaya'] ?? $user->paymaya_account,
+        'bpi_account' => $validated['bpi'] ?? $user->bpi_account,
+        'bdo_account' => $validated['bdo'] ?? $user->bdo_account,
+    ])->save();
+
+    // Update or create profile
+    $profile = $user->profile()->updateOrCreate([], [
+        'bio' => $validated['bio'] ?? null,
+        'phone' => $validated['phone'] ?? null,
+        'website' => $validated['website'] ?? null,
+        'location' => $validated['location'] ?? null,
+    ]);
+
+    // Update social links
+    if (isset($validated['social_links'])) {
+        $existingIds = [];
+
+        foreach ($validated['social_links'] as $linkData) {
+            if (isset($linkData['id'])) {
+                $link = SocialLink::where('id', $linkData['id'])
+                    ->where('profile_id', $profile->id)
+                    ->first();
+
+                if ($link) {
+                    $link->update($linkData);
+                    $existingIds[] = $link->id;
+                }
+            } else {
+                $link = $profile->socialLinks()->create($linkData);
+                $existingIds[] = $link->id;
+            }
+        }
+
+        // Delete removed links
+        $profile->socialLinks()->whereNotIn('id', $existingIds)->delete();
+    }
+
+    return response()->json(['message' => 'Profile updated successfully.']);
+}
+
+public function me(Request $request)
+{
+    $user = $request->user()->load(['profile.socialLinks']);
+
+    // Get admin accounts
+    $admin = User::where('is_admin', 1)->first();
+
+    $paymentAccounts = $user->is_admin
+        ? [
+            'gcash'   => $user->gcash_account,
+            'paymaya' => $user->paymaya_account,
+            'bpi'     => $user->bpi_account,
+            'bdo'     => $user->bdo_account,
+        ]
+        : [
+            'gcash'   => $admin->gcash_account ?? null,
+            'paymaya' => $admin->paymaya_account ?? null,
+            'bpi'     => $admin->bpi_account ?? null,
+            'bdo'     => $admin->bdo_account ?? null,
+        ];
+
+    $response = [
         'id'           => $user->id,
         'name'         => $user->name,
         'firstname'    => $user->firstname,
@@ -103,8 +129,8 @@ public function me(Request $request)
         'username'     => $user->username,
         'email'        => $user->email,
         'avatar_url'   => $user->profile_image
-        ? asset("storage/{$user->profile_image}") // ✅ resolves to /storage/avatars/xxxx.png
-        : asset("storage/defaults/avatar.png"),
+            ? asset("storage/{$user->profile_image}")
+            : asset("storage/defaults/avatar.png"),
         'is_admin'     => $user->is_admin,
         'profile'      => [
             'bio'              => $user->profile->bio ?? '',
@@ -120,7 +146,7 @@ public function me(Request $request)
             'accent_color'     => $user->profile->accent_color,
             'nfc_redirect_url' => $user->profile->nfc_redirect_url,
             'is_published'     => $user->profile->is_published,
-            'socialLinks' => $user->profile->socialLinks->map(function ($link) {
+            'socialLinks'      => $user->profile->socialLinks->map(function ($link) {
                 return [
                     'id'        => $link->id,
                     'platform'  => $link->platform,
@@ -129,9 +155,13 @@ public function me(Request $request)
                     'isVisible' => (bool) $link->is_visible,
                 ];
             }),
-        ]
-    ], 200);
+        ],
+        'payment_accounts' => $paymentAccounts,
+    ];
+
+    return response()->json($response, 200);
 }
+
 
 public function show($username)
 {

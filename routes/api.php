@@ -118,15 +118,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stats/users-count', function () {
         return response()->json(['count' => \App\Models\User::count()]);
     });
-
-    Route::get('/stats/top-templates', [StatsController::class, 'topTemplates']);
 });
+Route::get('/stats/top-templates', [StatsController::class, 'topTemplates']);
 
     Route::get('/templates', [TemplateController::class, 'index']);
     Route::get('/templates/{slug}', [TemplateController::class, 'show']);
     Route::post('/templates/store', [TemplateController::class, 'store']);
     Route::put('/templates/{id}', [TemplateController::class, 'update']);
     Route::get('/templates/id/{id}', [TemplateController::class, 'showById']);
+    Route::get('/templates/check-slug/{slug}', [TemplateController::class, 'checkSlug']);
+    Route::post('/templates/{id}/toggle-hidden', [TemplateController::class, 'toggleHidden']);
     
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
@@ -179,5 +180,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/payments/{id}/approve', [AdminPaymentController::class, 'approve']);
     Route::post('/admin/payments/{id}/disapprove', [AdminPaymentController::class, 'disapprove']);
 });
+  Route::get('/admin/payments/count', [AdminPaymentController::class, 'count']);
 
  
