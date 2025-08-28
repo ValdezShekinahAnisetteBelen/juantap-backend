@@ -73,7 +73,7 @@ public function topTemplates()
     $templates = DB::table('templates')
         ->leftJoin('template_unlocks', function ($join) {
             $join->on('templates.id', '=', 'template_unlocks.template_id')
-                 ->where('template_unlocks.is_approved', 1);
+                ->where('template_unlocks.is_approved', 1);
         })
         ->leftJoin('user_saved_templates', 'templates.id', '=', 'user_saved_templates.template_id')
         ->select(
@@ -95,10 +95,10 @@ public function topTemplates()
             'templates.price',
             'templates.thumbnail_url'
         )
-        ->orderByDesc('unlocks')      // primary sort
-        ->orderByDesc('revenue')      // secondary sort
-        ->orderByDesc('saves')        // tertiary sort
-        ->limit(5)                     // only top 5
+        ->havingRaw('unlocks > 0 OR saves > 0 OR revenue > 0') // Filter to only those with stats
+        ->orderByDesc('unlocks')
+        ->orderByDesc('revenue')
+        ->orderByDesc('saves')
         ->get();
 
     return response()->json($templates);
