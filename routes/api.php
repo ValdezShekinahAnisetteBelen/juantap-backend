@@ -101,6 +101,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'storeOrUpdate']);
     Route::post('/profile/publish', [ProfileController::class, 'publish']);
+    Route::get('/profile/{username}', [ProfileController::class, 'show']);
+
 
     // SOCIAL LINKS
     Route::post('/profile/social-links', [SocialLinkController::class, 'store']);
@@ -128,7 +130,7 @@ Route::get('/stats/top-templates', [StatsController::class, 'topTemplates']);
     Route::get('/templates/id/{id}', [TemplateController::class, 'showById']);
     Route::get('/templates/check-slug/{slug}', [TemplateController::class, 'checkSlug']);
     Route::post('/templates/{id}/toggle-hidden', [TemplateController::class, 'toggleHidden']);
-    
+        
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
