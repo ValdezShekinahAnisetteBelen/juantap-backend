@@ -62,7 +62,18 @@ class AuthController extends Controller
         return response()->json(['message' => 'User not found'], 404);
     }
 
-    return response()->json($user);
+    return response()->json([
+    'id' => $user->id,
+    'name' => $user->name,
+    'username' => $user->username ?? null, // ✅ include username for the frontend
+    'email' => $user->email,
+    'is_admin' => (bool)$user->is_admin,
+    'avatar_url' => $user->profile_image
+        ? asset($user->profile_image)
+        : asset('avatars/default.png'),
+    'profile' => $user->profile,
+]);
+
 }
 
 
@@ -95,10 +106,21 @@ class AuthController extends Controller
         ]);
     }
 
-   public function index()
+public function index()
 {
-    // Only return non-admin users
-    $users = User::where('is_admin', 0)->get();
+    $users = User::where('is_admin', 0)->get()->map(function ($user) {
+        return [
+            'id' => $user->id,
+            'firstname' => $user->firstname,
+            'lastname' => $user->lastname,
+            'name' => $user->name,
+            'email' => $user->email,
+            'is_admin' => (bool) $user->is_admin,
+            'avatar_url' => $user->profile_image
+                ? asset($user->profile_image)
+                : asset('avatars/default.png'),
+        ];
+    });
 
     return response()->json(['users' => $users]);
 }

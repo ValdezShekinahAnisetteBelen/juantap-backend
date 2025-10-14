@@ -16,6 +16,7 @@ class ProfileController extends Controller
 {
     $user = $request->user();
 
+    try {
     $validated = $request->validate([
         'name' => 'nullable|string|max:255',
         'firstname' => 'nullable|string|max:255',
@@ -33,7 +34,7 @@ class ProfileController extends Controller
         'social_links' => 'array',
         'social_links.*.id' => 'nullable|integer|exists:social_links,id',
         'social_links.*.platform' => 'required|string|max:50',
-        'social_links.*.url' => 'required|url|max:255',
+        'social_links.*.url' => 'required|string|max:255',
         'social_links.*.display_name' => 'nullable|string|max:100',
         'social_links.*.is_visible' => 'boolean',
 
@@ -43,15 +44,27 @@ class ProfileController extends Controller
         'bpi' => 'nullable|string|max:20',
         'bdo' => 'nullable|string|max:20',
     ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+    return response()->json([
+        'message' => 'Validation failed',
+        'errors' => $e->errors(),
+    ], 422);
+}
 
     // Handle avatar upload
-    if ($request->hasFile('avatar')) {
-        if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
-            Storage::disk('public')->delete($user->profile_image);
+        if ($request->hasFile('avatar')) {
+            // Delete old avatar if exists
+            if ($user->profile_image && file_exists(public_path($user->profile_image))) {
+                unlink(public_path($user->profile_image));
+            }
+
+            // Save new file into /public/avatars
+            $filename = time() . '_' . $request->file('avatar')->getClientOriginalName();
+            $request->file('avatar')->move(public_path('avatars'), $filename);
+
+            $user->profile_image = 'avatars/' . $filename; // relative path
         }
-        $avatarPath = $request->file('avatar')->store('avatars', 'public');
-        $user->profile_image = $avatarPath;
-    }
+
 
     // Update user table including payment accounts
     $user->fill([
@@ -128,9 +141,9 @@ public function me(Request $request)
         'display_name' => $user->display_name,
         'username'     => $user->username,
         'email'        => $user->email,
-        'avatar_url'   => $user->profile_image
-            ? asset("storage/{$user->profile_image}")
-            : asset("storage/defaults/avatar.png"),
+       'avatar_url' => $user->profile_image
+        ? asset($user->profile_image)
+        : asset("avatars/default.png"),
         'is_admin'     => $user->is_admin,
         'profile'      => [
             'bio'              => $user->profile->bio ?? '',
@@ -184,8 +197,8 @@ public function show($username)
         'name' => $user->name,
         'email' => $user->email,
         'avatar_url' => $user->profile_image
-            ? asset("storage/{$user->profile_image}") // ✅ full URL
-            : asset("storage/defaults/avatar.png"),
+            ? asset($user->profile_image)
+            : asset("avatars/default.png"),
         'template' => $template,
         'profile' => [
             'bio' => $user->profile->bio ?? '',
