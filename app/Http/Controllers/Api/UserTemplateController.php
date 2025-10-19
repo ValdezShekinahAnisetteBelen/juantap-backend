@@ -292,7 +292,13 @@ class UserTemplateController extends Controller
 
         $template = Template::where('slug', $request->template_slug)->firstOrFail();
 
-        $path = $request->file('receipt_img')->store('payment_receipts', 'public');
+        // Save directly to /public/payment_receipts/
+        $filename = time() . '_' . $request->file('receipt_img')->getClientOriginalName();
+        $request->file('receipt_img')->move(public_path('payment_receipts'), $filename);
+
+        // Public URL path (accessible directly)
+        $path = 'payment_receipts/' . $filename;
+
 
         $unlock = TemplateUnlock::firstOrNew([
             'user_id' => $userId,
